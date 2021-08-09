@@ -9,10 +9,20 @@ import Combine
 import Foundation
 import SwiftUI
 
+public class Events: ObservableObject {
+    public let getInfo = PassthroughSubject<Void, Never>()
+    
+    public init() {}
+}
+
 public struct CustomView: UIViewControllerRepresentable {
     public typealias UIViewControllerType = CustomViewController
     
+    @ObservedObject var events: Events
+    public var infoRetrieved: ((String) -> Void)?
+    
     public class Coordinator: NSObject {
+        var cancellables = Set<AnyCancellable>()
         weak var viewController: UIViewControllerType?
         
         // Method to retrieve data from UIKit
@@ -27,6 +37,13 @@ public struct CustomView: UIViewControllerRepresentable {
     
     public func makeUIViewController(context: Context) -> CustomViewController {
         let viewController = CustomViewController()
+        
+        events.getInfo.sink { [context] in
+            guard let info = context.coordinator.retrieveInfo() else { return }
+            infoRetrieved?(info)
+        }
+        .store(in: &context.coordinator.cancellables)
+        
         context.coordinator.viewController = viewController
         return viewController
     }
